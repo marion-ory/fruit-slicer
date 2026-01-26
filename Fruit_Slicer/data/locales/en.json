@@ -1,0 +1,7 @@
+{
+    "MENU_START": "Press space to begin",
+    "SCORE_LABEL": "Score",
+    "LIVES_LABEL": "Lives left ",
+    "MSG_GAME_OVER": "GAME OVER ! ",
+    "MSG_FREEZE": "FREEZE !"
+}

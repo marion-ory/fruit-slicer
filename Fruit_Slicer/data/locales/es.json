@@ -1,0 +1,7 @@
+{
+"MENU_START": "Pulsa espacio para comenzar",
+"SCORE_LABEL": "resultado",
+"LIVES_LABEL": "vidas restantes",
+"MSG_GAME_OVER": "JUEGO PERDIDO! Lástima !",
+"MSG_FREEZE": "CONGELAR"
+}
