@@ -36,7 +36,12 @@ def slice(self):
 
 
 class Fructs(GameObject):
-    def __init__(self, points):
+    def __init__(self, points, name, x, y, key):
+        self.name = name
+        self.x = x
+        self.y = y
+        self.key = key
+        self.is_sliced = False
         super().__init__(name, points=2)
 
 
