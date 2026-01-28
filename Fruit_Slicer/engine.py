@@ -1,5 +1,5 @@
 import random
-from models import Fructs, Bomb, Ice
+from models import Fructs, Bomb, Ice, GoldenFruct
 
 
 class GameEngine:
@@ -15,70 +15,89 @@ class GameEngine:
         # timmer level
         self.spawn_timer = 0
         self.spawn_delay = 60  #
-
+        # radom keydown, random fructs
         self.fructs_type = ["pomme", "banane", "orange", "fruit d'or"]
+        self.available_keys = "abcdefghijklmnopqrstuvwxyz"
+        # combo
+        self.combo = 0
+        self.multiplicateur = 1
+        self.max_combo = 0
 
+    def update(self):
 
-def update(self):
-    for object in self.active_objects[:]:
-        if not self.is_frozen:
-            object.move()
+        if self.is_frozen:  # LOGIC TIMER FREEZE
+            self.FreezeTimer -= 1
+            if self.FreezeTimer <= 0:
+                self.is_frozen = False  # restart frozen timer
 
-        if object.is_sliced:  # LOGIC IS SLICED
-            if isinstance(object, Ice):
-                self.is_frozen = True
-                self.FreezeTimer = 180
-                print(f"FREEZE {self.FreezeTimer}")
+        self.spawn_timer += 1  # apparition random object each 60scd
 
-            elif isinstance(object, Bomb):
-                self.is_GameOver = True
-                print(f"GAME OVER {self.is_GameOver}")
+        if self.spawn_timer >= self.spawn_delay:
+            self.spawner()
+            self.spawn_timer = 0
 
-            elif isinstance(object, Fructs):
-                self.score += 1
-                print(f"Bravo ! {self.score}")
-            self.active_objects.remove(object)
-            continue
+        for object in self.active_objects[:]:
+            if not self.is_frozen:
+                object.move()
 
-        if object.y > 600:  # LOGIC IS OUT OF SCREEN
-            if isinstance(object, Fructs) and not object.is_sliced:
-                self.strikes += 1
-                print(f"Raté ! Strikes : {self.strikes} / 3")
-                if self.strikes >= 3:
+            if object.is_sliced:  # LOGIC IS SLICED
+                if isinstance(object, Ice):
+                    self.is_frozen = True
+                    self.FreezeTimer = 180
+                    self.combo = 0
+                    print(f"FREEZE {self.FreezeTimer}")
+
+                elif isinstance(object, Bomb):
                     self.is_GameOver = True
-                print(f"Game Over: {self.is_GameOver} ")
+                    self.combo = 0
+                    print(f"GAME OVER {self.is_GameOver}")
 
-            if object in self.active_objects:
+                elif isinstance(object, Fructs):
+                    self.score += object.points * self.multiplicateur
+
+                    self.score += 1
+                    self.combo += 1
+                    if self.combo > self.max_combo:
+                        self.max_combo = self.combo
+                    print(f"Bravo ! {self.score}")
+
                 self.active_objects.remove(object)
+                continue
 
-    if object.is_frozen:  # LOGIC TIMER FREEZE
-        self.FreezeTimer -= 1
-        if self.FreezeTimer > 0:
-            self.is_Frozen = False  # restart frozen timer
+            if object.y > 600:  # LOGIC IS OUT OF SCREEN
+                if isinstance(object, Fructs) and not object.is_sliced:
+                    self.strikes += 1
+                    print(f"Raté ! Strikes : {self.strikes} / 3")
+                    if self.strikes >= 3:
+                        self.is_GameOver = True
+                        self.combo = 0
+                    print(f"Game Over: {self.is_GameOver} ")
 
-    self.spawn_timer += 1  # apparition random object each 60scd
-    if self.spawn_timer >= self.span_delay:
-        self.spawner()
-        self.spawn_timer = 0
+                if object in self.active_objects:
+                    self.active_objects.remove(object)
 
+    # Object generator placement with random
+      def spawner(self):
+        # 1. Préparation des données communes
+          x_random = random.randint(100, 700)
+          y_start = 650
+          random_key = random.choice(self.available_keys)
 
-# Object generator place with random
-def spawner(self):
-    type = ["fruct", "bomb", "ice"]
-    choose = random.choice(type)
-    # position random
-    x_random = random.randint(100, 700)
-    y_start = 650  # under the screen (position)
+        # 2. Choix du type d'objet
+          category = random.choice(["fruct", "bomb", "ice"])
 
-    letter = "abcdefghijklmnopqrstuvwxyz"
-    letter_choice = random.choice(letter)
+        # 3. Création de l'objet (Logique simplifiée)
+          if category == "fruct":
+            name = random.choice(self.fructs_type)
+            if name == "fruit d'or":
+                new_object = GoldenFruct(x=x_random, y=y_start, key=random_key)
+            else:
+                new_object = Fructs(name=name, points=2, x=x_random, y=y_start, key=random_key)
 
-    if choose == "fruct":
-        name_random = random.choice(self.fructs_type)
-        new_object = Fructs(name=name_random, x=x_random, y=y_start, key=letter_choice)
-    elif choose == "bomb":
-        new_object = Bomb(name="bomb", x=x_random, y=y_start, key=letter_choice)
-    else:
-        new_object == Ice(name="ice", x=x_random, y=y_start, key=letter_choice)
+          elif category == "bomb":
+            new_object = Bomb(x=x_random, y=y_start, key=random_key)
 
-    self.active_objects.append(new_object)
+          else: # Ice
+            new_object = Ice(x=x_random, y=y_start, key=random_key)
+
+          self.active_objects.append(new_object)
