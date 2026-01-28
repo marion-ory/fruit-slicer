@@ -26,7 +26,7 @@ class GameObject:
     def slice(self):
         self.is_sliced = True
 
-    print(f"{self.name} est coupé !")
+        print(f"{self.name} est coupé !")
 
 
 # CLASS FILLES

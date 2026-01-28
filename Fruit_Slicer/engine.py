@@ -24,7 +24,6 @@ class GameEngine:
         self.max_combo = 0
 
     def update(self):
-
         if self.is_frozen:  # LOGIC TIMER FREEZE
             self.FreezeTimer -= 1
             if self.FreezeTimer <= 0:
@@ -54,8 +53,6 @@ class GameEngine:
 
                 elif isinstance(object, Fructs):
                     self.score += object.points * self.multiplicateur
-
-                    self.score += 1
                     self.combo += 1
                     if self.combo > self.max_combo:
                         self.max_combo = self.combo
@@ -77,27 +74,39 @@ class GameEngine:
                     self.active_objects.remove(object)
 
     # Object generator placement with random
-      def spawner(self):
+    def spawner(self):
         # 1. Préparation des données communes
-          x_random = random.randint(100, 700)
-          y_start = 650
-          random_key = random.choice(self.available_keys)
+        x_random = random.randint(100, 700)
+        y_start = 650
+        random_key = random.choice(self.available_keys)
 
         # 2. Choix du type d'objet
-          category = random.choice(["fruct", "bomb", "ice"])
+        category = random.choice(["fruct", "bomb", "ice"])
 
         # 3. Création de l'objet (Logique simplifiée)
-          if category == "fruct":
+        if category == "fruct":
             name = random.choice(self.fructs_type)
             if name == "fruit d'or":
                 new_object = GoldenFruct(x=x_random, y=y_start, key=random_key)
             else:
-                new_object = Fructs(name=name, points=2, x=x_random, y=y_start, key=random_key)
+                new_object = Fructs(
+                    name=name, points=2, x=x_random, y=y_start, key=random_key
+                )
 
-          elif category == "bomb":
+        elif category == "bomb":
             new_object = Bomb(x=x_random, y=y_start, key=random_key)
 
-          else: # Ice
+        else:  # Ice
             new_object = Ice(x=x_random, y=y_start, key=random_key)
 
-          self.active_objects.append(new_object)
+        self.active_objects.append(new_object)
+
+    # Collision object slice :
+    def check_collision(self, key_pressed):
+        for obj in self.active_objects:
+            # Si la touche correspond et que l'objet n'est pas déjà tranché
+            if obj.key == key_pressed and not obj.is_sliced:
+                obj.is_sliced = True
+                # On sort de la boucle pour ne pas trancher deux fruits
+                # qui auraient la même touche par erreur
+                return
