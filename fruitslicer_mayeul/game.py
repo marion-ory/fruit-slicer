@@ -1,5 +1,6 @@
 # game.py
 
+
 import pygame
 import json
 import os
@@ -10,24 +11,27 @@ from config import WHITE, BLACK, RED, BLUE, GREEN, YELLOW, ORANGE
 from config import FONT_BIG, FONT_MED, FONT_SMALL
 from config import IMG_HEART, IMG_COMBO, FREEZE_DURATION_MS
 from config import DIFFICULTY_SETTINGS, MUSIC_FILE, BASE_DIR
-from config import COMBO_WINDOW_MS, COMBO_MULTIPLIERS, COMBO_FOR_LIFE
-from entities import FRUIT_TYPES, BOMB_TYPE
+from entities import FRUIT_TYPES, BOMB_TYPE, ICE_TYPE, GOLDENFRUIT_TYPE, make_slices_from_fruit
 from spawner import BeatSpawner
-from physics import apply_gravity_and_move, is_off_screen, handle_key_press
+from physics import apply_gravity_and_move, is_off_screen
 from audio_analysis import analyze_music
 
+
 SCORES_FILE = os.path.join(BASE_DIR, "scores.json")
+
 
 def draw_text(surface, text, font, color, center):
     img = font.render(text, True, color)
     rect = img.get_rect(center=center)
     surface.blit(img, rect)
 
+
 def load_scores():
     if not os.path.exists(SCORES_FILE):
         return []
     with open(SCORES_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
+
 
 def save_score(score):
     scores = load_scores()
@@ -36,9 +40,11 @@ def save_score(score):
     with open(SCORES_FILE, "w", encoding="utf-8") as f:
         json.dump(scores, f)
 
+
 def resize_window(new_w, new_h):
     global WINDOW
     WINDOW = pygame.display.set_mode((new_w, new_h), pygame.RESIZABLE)
+
 
 def blit_scaled():
     win_w, win_h = WINDOW.get_size()
@@ -46,11 +52,64 @@ def blit_scaled():
     WINDOW.blit(scaled, (0, 0))
     pygame.display.flip()
 
+
 def logical_mouse_pos(real_pos):
     win_w, win_h = WINDOW.get_size()
     rx = real_pos[0] / win_w
     ry = real_pos[1] / win_h
     return int(rx * LOGICAL_WIDTH), int(ry * LOGICAL_HEIGHT)
+
+
+def segment_intersects_rect(p1, p2, rect):
+    if rect.collidepoint(p1) or rect.collidepoint(p2):
+        return True
+
+
+    r = rect
+    rect_segments = [
+        ((r.left, r.top), (r.right, r.top)),
+        ((r.right, r.top), (r.right, r.bottom)),
+        ((r.right, r.bottom), (r.left, r.bottom)),
+        ((r.left, r.bottom), (r.left, r.top)),
+    ]
+
+
+    def ccw(A, B, C):
+        return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+
+
+    def segments_intersect(A, B, C, D):
+        return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
+
+
+    for a, b in rect_segments:
+        if segments_intersect(p1, p2, a, b):
+            return True
+    return False
+
+
+def draw_sword_trail(surface, points):
+    if len(points) < 2:
+        return
+
+
+    trail_surface = pygame.Surface((LOGICAL_WIDTH, LOGICAL_HEIGHT), pygame.SRCALPHA)
+
+
+    for i in range(len(points) - 1):
+        p1 = points[i]
+        p2 = points[i + 1]
+        t = i / (len(points) - 1)
+        
+        width = int(12 * (1 - t) + 2 * t)
+        alpha = int(220 * (1 - t))
+        
+        color = (255, 255, 255, alpha)
+        pygame.draw.line(trail_surface, color, p1, p2, width)
+
+
+    surface.blit(trail_surface, (0, 0))
+
 
 def splash_screen():
     running = True
@@ -75,6 +134,7 @@ def splash_screen():
         
         if pygame.time.get_ticks() - timer_start > 4000:
             return True
+
 
 def difficulty_screen():
     difficulties = ["EASY", "HARD"]
@@ -120,6 +180,7 @@ def difficulty_screen():
         
         blit_scaled()
         CLOCK.tick(FPS)
+
 
 def main_menu():
     buttons = [
@@ -172,6 +233,7 @@ def main_menu():
         blit_scaled()
         CLOCK.tick(FPS)
 
+
 def scores_screen():
     scores = load_scores()
     waiting = True
@@ -202,12 +264,6 @@ def scores_screen():
         blit_scaled()
         CLOCK.tick(30)
 
-def get_combo_multiplier(combo_count):
-    """Retourne le multiplicateur basé sur le nombre de combos"""
-    for threshold in sorted(COMBO_MULTIPLIERS.keys(), reverse=True):
-        if combo_count >= threshold:
-            return COMBO_MULTIPLIERS[threshold]
-    return 1
 
 def game_loop(difficulty):
     bpm, beat_times_ms = analyze_music()
@@ -224,13 +280,14 @@ def game_loop(difficulty):
     freeze_active = False
     freeze_end_time = 0
     
+    # SYSTÈME DE COMBO SIMPLIFIÉ
     combo_count = 0
     combo_active = False
-    combo_end_time = 0
     
-    total_combo_hits = 0  # Pour le système de vie bonus
-    
-    last_hit_times = []
+    # Variables pour le slice souris
+    mouse_path = []
+    MAX_PATH_POINTS = 25
+    last_mouse_pos = None
     
     start_ticks = pygame.time.get_ticks()
     MIN_GAME_TIME_MS = 8000
@@ -251,68 +308,96 @@ def game_loop(difficulty):
                 if event.key == pygame.K_ESCAPE:
                     running = False
                     return
-                
-                combo_multiplier = get_combo_multiplier(combo_count)
-                
-                hit, gain, bomb_trig, freeze_trig, wrong_key, bomb_defused = handle_key_press(
-                    event.key, objects, now_ms, last_hit_times, combo_multiplier
-                )
-                
-                score = max(0, score + gain)  # Le score ne peut pas être négatif
-                
-                if wrong_key:
-                    lives -= 1  # Pénalité pour mauvaise touche
-                    if lives <= 0:
-                        running = False
-                        break
-                
-                if bomb_trig:
-                    lives -= 2
-                    if lives <= 0:
-                        running = False
-                        break
-                
-                if freeze_trig:
-                    freeze_active = True
-                    freeze_end_time = now_ms + FREEZE_DURATION_MS
-                
-                # Système de combo
-                if hit and not bomb_defused:
-                    combo_count = len(last_hit_times)
-                    total_combo_hits += 1
-                    
-                    # Gagner une vie tous les 15 hits en combo
-                    if total_combo_hits % COMBO_FOR_LIFE == 0 and lives < 5:
-                        lives += 1
-                    
-                    if combo_count >= 3:
-                        combo_active = True
-                        combo_end_time = now_ms + 800
             
             if event.type == pygame.VIDEORESIZE:
                 resize_window(event.w, event.h)
         
-        # Désactiver le freeze
+        # Gestion du mouvement souris
+        real_mouse = pygame.mouse.get_pos()
+        mx, my = logical_mouse_pos(real_mouse)
+        
+        if last_mouse_pos is None:
+            last_mouse_pos = (mx, my)
+        
+        mouse_segment = (last_mouse_pos, (mx, my))
+        last_mouse_pos = (mx, my)
+        
+        mouse_path.append((mx, my))
+        if len(mouse_path) > MAX_PATH_POINTS:
+            mouse_path.pop(0)
+        
+        # Détection des slices
+        hit = False
+        gain = 0
+        bomb_trig = False
+        freeze_trig = False
+        
+        new_objects = []
+        
+        for obj in list(objects):
+            if segment_intersects_rect(*mouse_segment, obj.rect):
+                hit = True
+                
+                if obj.type in FRUIT_TYPES:
+                    # 1 fruit = 1 point (x3 si combo actif)
+                    points = 1
+                    if combo_active:
+                        points = 3
+                    
+                    gain += points
+                    combo_count += 1
+                    
+                    # Activer le combo à 10
+                    if combo_count >= 10:
+                        combo_active = True
+                    
+                    new_objects.extend(make_slices_from_fruit(obj))
+                    objects.remove(obj)
+                
+                elif obj.type is ICE_TYPE:
+                    freeze_trig = True
+                    objects.remove(obj)
+                
+                elif obj.type is BOMB_TYPE:
+                    bomb_trig = True
+                    objects.remove(obj)
+                
+                elif obj.type is GOLDENFRUIT_TYPE:
+                    # Fruit doré = 5 points (x3 si combo actif) + 1 VIE
+                    points = 5
+                    if combo_active:
+                        points = 15
+                    
+                    gain += points
+                    combo_count += 1
+                    
+                    # BONUS VIE (max 5)
+                    if lives < 5:
+                        lives += 1
+                    
+                    if combo_count >= 10:
+                        combo_active = True
+                    
+                    new_objects.extend(make_slices_from_fruit(obj))
+                    objects.remove(obj)
+        
+        objects.extend(new_objects)
+        score = max(0, score + gain)
+        
+        # Si on touche une bombe : reset combo
+        if bomb_trig:
+            lives -= 2
+            combo_count = 0
+            combo_active = False
+            if lives <= 0:
+                running = False
+        
+        if freeze_trig:
+            freeze_active = True
+            freeze_end_time = now_ms + FREEZE_DURATION_MS
+        
         if freeze_active and now_ms > freeze_end_time:
             freeze_active = False
-        
-        # Désactiver l'affichage combo
-        if combo_active and now_ms > combo_end_time:
-            combo_active = False
-        
-        # Reset combo si trop de temps
-        if last_hit_times:
-            if now_ms - last_hit_times[-1] > COMBO_WINDOW_MS:
-                combo_count = 0
-        
-        # Vérifier les bombes expirées
-        for obj in list(objects):
-            if obj.is_bomb_expired():
-                lives -= 1
-                objects.remove(obj)
-                if lives <= 0:
-                    running = False
-                    break
         
         spawner.update(elapsed_ms, objects)
         
@@ -320,26 +405,37 @@ def game_loop(difficulty):
             apply_gravity_and_move(obj, dt, speed_multiplier=speed_multiplier, slow_motion=freeze_active)
             
             if is_off_screen(obj):
-                # Perdre une vie si un fruit tombe
+                # Si on rate un fruit : reset combo
                 if obj.type in FRUIT_TYPES and elapsed_ms > MIN_GAME_TIME_MS and not obj.is_slice:
                     lives -= 1
+                    combo_count = 0
+                    combo_active = False
                     if lives <= 0:
                         running = False
                         break
+                # Les bombes qui sortent de l'écran disparaissent juste (pas de pénalité)
                 objects.remove(obj)
         
-        # Affichage
+        # AFFICHAGE
         SCREEN.blit(BACKGROUND_GAME, (0, 0))
         
         for obj in objects:
             obj.draw(SCREEN)
         
-        # Score et multiplicateur
-        multiplier = get_combo_multiplier(combo_count)
-        score_text = f"Score: {score}"
-        if multiplier > 1:
-            score_text += f" (x{multiplier})"
-        draw_text(SCREEN, score_text, FONT_MED, WHITE, (150, 40))
+        # Traînée de la souris
+        draw_sword_trail(SCREEN, mouse_path)
+        
+        # Score
+        multiplier_text = " (x3)" if combo_active else ""
+        score_text = f"Score: {score}{multiplier_text}"
+        draw_text(SCREEN, score_text, FONT_MED, YELLOW if combo_active else WHITE, (150, 40))
+        
+        # Compteur combo
+        combo_color = ORANGE if combo_active else WHITE
+        combo_text = f"Combo: {combo_count}/10"
+        if combo_active:
+            combo_text = f"COMBO x3! ({combo_count})"
+        draw_text(SCREEN, combo_text, FONT_MED, combo_color, (LOGICAL_WIDTH // 2, 40))
         
         # Vies
         for i in range(min(lives, 5)):
@@ -349,30 +445,18 @@ def game_loop(difficulty):
         
         # Indicateur slow-motion
         if freeze_active:
-            draw_text(SCREEN, "SLOW MOTION!", FONT_MED, BLUE, (LOGICAL_WIDTH // 2, 70))
-            # Ralentir la musique
-            if pygame.mixer.music.get_busy():
-                pass  # Note: pygame.mixer ne supporte pas le pitch shift facilement
+            draw_text(SCREEN, "SLOW MOTION!", FONT_MED, BLUE, (LOGICAL_WIDTH // 2, 100))
         
-        # Indicateur combo
+        # Image combo quand actif
         if combo_active:
-            SCREEN.blit(IMG_COMBO, (LOGICAL_WIDTH // 2 - IMG_COMBO.get_width() // 2, LOGICAL_HEIGHT // 2 - 80))
-            combo_text = f"COMBO x{multiplier}!"
-            draw_text(SCREEN, combo_text, FONT_SMALL, ORANGE, (LOGICAL_WIDTH // 2, LOGICAL_HEIGHT // 2 + 20))
-        
-        # Progression vers vie bonus
-        progress_text = f"Combo: {total_combo_hits % COMBO_FOR_LIFE}/{COMBO_FOR_LIFE}"
-        draw_text(SCREEN, progress_text, FONT_SMALL, GREEN, (LOGICAL_WIDTH // 2, 100))
-        
-        # Aide touches
-        key_help = "A=Pomme B=Banane O=Orange I=Glace X=Désactiver bombe G=Golden"
-        draw_text(SCREEN, key_help, FONT_SMALL, YELLOW, (LOGICAL_WIDTH // 2, LOGICAL_HEIGHT - 30))
+            SCREEN.blit(IMG_COMBO, (LOGICAL_WIDTH // 2 - IMG_COMBO.get_width() // 2, LOGICAL_HEIGHT // 2 - 100))
         
         blit_scaled()
     
     pygame.mixer.music.stop()
     save_score(score)
     game_over_screen(score)
+
 
 def game_over_screen(score):
     waiting = True
