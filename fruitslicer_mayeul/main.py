@@ -1,21 +1,28 @@
-# main.py
 import pygame
-from game import splash_screen, main_menu, game_loop
+from screens import splash_screen, main_menu
+from game_mouse import game_loop_mouse
+from game_keyboard import game_loop_keyboard
+
 
 def main():
     if not splash_screen():
         pygame.quit()
         return
 
-    running = True
-    while running:
-        action, difficulty = main_menu()
+    while True:
+        action, mode, difficulty = main_menu()
+        
         if action is None:
-            running = False
-        elif action == "PLAY":
-            game_loop(difficulty)
+            break
+        
+        if action == "PLAY":
+            if mode == "SOURIS":
+                game_loop_mouse(difficulty)
+            elif mode == "CLAVIER":
+                game_loop_keyboard(difficulty)
 
     pygame.quit()
+
 
 if __name__ == "__main__":
     main()

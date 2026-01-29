@@ -1,44 +1,20 @@
-# entities.py
-
 import random
 import pygame
-from config import IMG_APPLE, IMG_APPLE_SLICE, IMG_BANANA, IMG_BANANA_SLICE
-from config import IMG_ORANGE, IMG_ORANGE_SLICE
-from config import IMG_ICE, IMG_BOMB, IMG_GOLDENFRUIT, IMG_GOLDENFRUIT_SLICE
+from config import *
 
-
+# === TYPES D'OBJETS ===
 FRUIT_TYPES = [
-    {
-        "name": "APPLE",
-        "img": IMG_APPLE,
-        "img_slice": IMG_APPLE_SLICE,
-        "base_points": 1,
-    },
-    {
-        "name": "BANANA",
-        "img": IMG_BANANA,
-        "img_slice": IMG_BANANA_SLICE,
-        "base_points": 1,
-    },
-    {
-        "name": "ORANGE",
-        "img": IMG_ORANGE,
-        "img_slice": IMG_ORANGE_SLICE,
-        "base_points": 1,
-    },
+    {"name": "APPLE", "img": IMG_APPLE, "img_slice": IMG_APPLE_SLICE, "base_points": 1},
+    {"name": "BANANA", "img": IMG_BANANA, "img_slice": IMG_BANANA_SLICE, "base_points": 1},
+    {"name": "ORANGE", "img": IMG_ORANGE, "img_slice": IMG_ORANGE_SLICE, "base_points": 1},
 ]
-
 
 ICE_TYPE = {"name": "ICE", "img": IMG_ICE}
 BOMB_TYPE = {"name": "BOMB", "img": IMG_BOMB}
-GOLDENFRUIT_TYPE = {
-    "name": "GOLDENFRUIT",
-    "img": IMG_GOLDENFRUIT,
-    "img_slice": IMG_GOLDENFRUIT_SLICE,
-    "bonus_points": 5,
-}
+GOLDENFRUIT_TYPE = {"name": "GOLDENFRUIT", "img": IMG_GOLDENFRUIT, "img_slice": IMG_GOLDENFRUIT_SLICE, "bonus_points": 5}
 
 
+# === CLASSE OBJET ===
 class FallingObject:
     def __init__(self, obj_type, x, y, vy, vx=0.0, is_slice=False):
         self.type = obj_type
@@ -47,20 +23,15 @@ class FallingObject:
         self.vy = vy
         self.vx = vx
         self.is_slice = is_slice
-        
         self.spawn_time = pygame.time.get_ticks()
         self.bomb_timer = 2500
-
 
     def draw(self, surface):
         if self.type is BOMB_TYPE:
             elapsed = pygame.time.get_ticks() - self.spawn_time
-            if elapsed > 1500:
-                if (elapsed // 150) % 2 == 0:
-                    surface.blit(self.image, self.rect)
-                    pygame.draw.circle(surface, (255, 0, 0), self.rect.center, 35, 3)
-                else:
-                    surface.blit(self.image, self.rect)
+            if elapsed > 1500 and (elapsed // 150) % 2 == 0:
+                surface.blit(self.image, self.rect)
+                pygame.draw.circle(surface, (255, 0, 0), self.rect.center, 35, 3)
             else:
                 surface.blit(self.image, self.rect)
         else:
@@ -68,16 +39,15 @@ class FallingObject:
     
     def is_bomb_expired(self):
         if self.type is BOMB_TYPE:
-            elapsed = pygame.time.get_ticks() - self.spawn_time
-            return elapsed > self.bomb_timer
+            return pygame.time.get_ticks() - self.spawn_time > self.bomb_timer
         return False
 
 
+# === FONCTIONS DE SPAWN ===
 def _random_spawn_bottom():
     x = random.randint(150, 650)
     y = 590
-    # VITESSE RÉDUITE - Retour à des valeurs plus basses
-    vy = random.uniform(-0.65, -0.75)  # Beaucoup plus faible qu'avant
+    vy = random.uniform(-0.65, -0.75)
     vx = random.uniform(-0.10, 0.10)
     return x, y, vy, vx
 
@@ -104,17 +74,13 @@ def goldenfruit():
 
 
 def make_slices_from_fruit(obj):
-    slice_type = {
-        "name": obj.type["name"] + "_SLICE",
-        "img": obj.type["img_slice"],
-    }
-    
+    """Crée les tranches après un slice"""
+    slice_type = {"name": obj.type["name"] + "_SLICE", "img": obj.type["img_slice"]}
     x, y = obj.rect.center
     vy = obj.vy * 0.6
     
     if obj.type["name"] == "BANANA":
-        slice_obj = FallingObject(slice_type, x, y, vy, vx=obj.vx, is_slice=True)
-        return [slice_obj]
+        return [FallingObject(slice_type, x, y, vy, vx=obj.vx, is_slice=True)]
     
     left = FallingObject(slice_type, x, y, vy, vx=obj.vx - 0.1, is_slice=True)
     right = FallingObject(slice_type, x, y, vy, vx=obj.vx + 0.1, is_slice=True)

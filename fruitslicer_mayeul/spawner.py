@@ -1,7 +1,4 @@
-# spawner.py
-
 import random
-import pygame
 from entities import random_fruit, bomb, ice_cube, goldenfruit
 
 
@@ -10,21 +7,19 @@ class BeatSpawner:
         self.beat_times_ms = beat_times_ms
         self.beat_index = 0
         self.difficulty = difficulty
-        self.last_spawn_time = 0
         
-        # PROBABILITÉS AJUSTÉES
         if difficulty == "EASY":
             self.bomb_chance = 0.08
             self.ice_chance = 0.05
             self.golden_chance = 0.08
             self.fruit_per_beat = 1
-            self.spawn_skip_chance = 0.30  # 30% de chance de skip un beat
-        else:  # HARD
+            self.spawn_skip_chance = 0.30
+        else:
             self.bomb_chance = 0.18
             self.ice_chance = 0.06
             self.golden_chance = 0.09
             self.fruit_per_beat = 2
-            self.spawn_skip_chance = 0.20  # 20% de chance de skip un beat
+            self.spawn_skip_chance = 0.20
     
     def update(self, elapsed_ms, objects):
         while self.beat_index < len(self.beat_times_ms):
@@ -32,7 +27,6 @@ class BeatSpawner:
             if elapsed_ms >= beat_time:
                 self.beat_index += 1
                 
-                # Skip certains beats pour réduire la fréquence
                 if random.random() < self.spawn_skip_chance:
                     continue
                 
