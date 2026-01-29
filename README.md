@@ -32,24 +32,32 @@ Le joueur peut choisir entre un **mode souris** (slice avec la souris) et un **m
    ```bash
    git clone https://github.com/marion-ory/fruit-slicer.git
    cd fruit-slicer/fruitslicer_mayeul
-Installer les dépendances
+   ```
 
-bash
-pip install pygame librosa
-Vérifier la structure des dossiers
+2. **Installer les dépendances**
+   ```bash
+   pip install pygame librosa
+   ```
 
-text
-fruitslicer_mayeul/
-├── assets/      # Images (.png, .jpg)
-├── music/       # Musique de fond (track.mp3)
-├── sounds/      # Effets sonores (.mp3)
-└── *.py         # Fichiers Python
-Lancer le jeu
+3. **Vérifier la structure des dossiers**
+   ```
+   fruitslicer_mayeul/
+   ├── assets/      # Images (.png, .jpg)
+   ├── music/       # Musique de fond (track.mp3)
+   ├── sounds/      # Effets sonores (.mp3)
+   └── *.py         # Fichiers Python
+   ```
 
-bash
-python main.py
-📁 Structure du projet
-text
+4. **Lancer le jeu**
+   ```bash
+   python main.py
+   ```
+
+---
+
+## 📁 Structure du projet
+
+```
 fruitslicer_mayeul/
 │
 ├── assets/                    # Ressources graphiques
@@ -88,184 +96,166 @@ fruitslicer_mayeul/
 │
 ├── scores.json                # Scores (généré automatiquement)
 └── beat_cache.json            # Cache BPM (généré automatiquement)
+```
 
-🎮 Comment jouer
-Mode Souris 🖱️
-Déplacez la souris pour slicer les fruits
+---
 
-Évitez les bombes 💣 (toucher = -2 vies)
+## 🎮 Comment jouer
 
-Slicez les glaces 🧊 pour activer le slow-motion
+### Mode Souris 🖱️
 
-Slicez les fruits dorés ⭐ pour gagner +5 points et +1 vie
+- **Déplacez la souris** pour slicer les fruits
+- **Évitez les bombes** 💣 (toucher = -2 vies)
+- **Slicez les glaces** 🧊 pour activer le slow-motion
+- **Slicez les fruits dorés** ⭐ pour gagner +5 points et +1 vie
 
-Mode Clavier ⌨️
-Touche	Action
-A	Slice la pomme 🍎 la plus proche
-B	Slice la banane 🍌 la plus proche
-O	Slice l'orange 🍊 la plus proche
-S	Slice le fruit doré ⭐ le plus proche
-I	Slice la glace 🧊 (slow-motion)
-ESPACE	Désactive la bombe 💣 la plus proche
-Système de score
-Fruit normal : +1 point (x3 en combo)
+### Mode Clavier ⌨️
 
-Fruit doré : +5 points (x3 en combo) + 1 vie
+| Touche | Action |
+|--------|--------|
+| **A** | Slice la pomme 🍎 la plus proche |
+| **B** | Slice la banane 🍌 la plus proche |
+| **O** | Slice l'orange 🍊 la plus proche |
+| **S** | Slice le fruit doré ⭐ le plus proche |
+| **I** | Slice la glace 🧊 (slow-motion) |
+| **ESPACE** | Désactive la bombe 💣 la plus proche |
 
-Combo : Activé après 10 slices → points x3
+### Système de score
 
-Perdre une vie : Rater un fruit OU toucher une bombe (mode souris)
+- **Fruit normal** : +1 point (x3 en combo)
+- **Fruit doré** : +5 points (x3 en combo) + 1 vie
+- **Combo** : Activé après 10 slices → points x3
+- **Perdre une vie** : Rater un fruit OU toucher une bombe (mode souris)
+- **Bombe (mode clavier)** : Doit être désactivée avant explosion
 
-Bombe (mode clavier) : Doit être désactivée avant explosion
+---
 
-🏗️ Architecture des fichiers
-main.py – Point d'entrée
+## 🏗️ Architecture des fichiers
+
+### `main.py` – Point d'entrée
 Lance l'écran de splash, affiche le menu principal, récupère le choix du joueur (mode + difficulté) et démarre la boucle de jeu appropriée.
 
-config.py – Configuration globale
-Dimensions logiques (800×600)
+### `config.py` – Configuration globale
+- Dimensions logiques (800×600)
+- Couleurs, polices, FPS
+- Chargement de toutes les images
+- Paramètres de difficulté (EASY/HARD)
 
-Couleurs, polices, FPS
+### `sounds.py` – Gestion audio
+- Chargement des effets sonores (fruit, bombe, combo, goldenfruit)
+- Gestion de la musique de fond
+- Fonctions `play_fruit_sound()`, `play_bomb_sound()`, etc.
 
-Chargement de toutes les images
+### `rendering.py` – Fonctions de rendu
+- `draw_text()` : Affiche du texte centré
+- `draw_sword_trail()` : Dessine la traînée de souris
+- `blit_scaled()` : Gère le redimensionnement de la fenêtre
+- `logical_mouse_pos()` : Convertit les coordonnées souris
 
-Paramètres de difficulté (EASY/HARD)
+### `screens.py` – Menus et écrans
+- Écran de splash (logo)
+- Menu principal (Jouer, Scores, Quitter)
+- Choix du mode (Souris/Clavier)
+- Choix de difficulté (Easy/Hard)
+- Tableau des scores
+- Écran Game Over
+- Gestion du fichier `scores.json`
 
-sounds.py – Gestion audio
-Chargement des effets sonores (fruit, bombe, combo, goldenfruit)
+### `entities.py` – Objets du jeu
+- Définition des types de fruits (`FRUIT_TYPES`)
+- Types spéciaux : `ICE_TYPE`, `BOMB_TYPE`, `GOLDENFRUIT_TYPE`
+- Classe `FallingObject` (position, vitesse, dessin)
+- Fonctions de spawn : `random_fruit()`, `bomb()`, `goldenfruit()`, etc.
+- `make_slices_from_fruit()` : Crée les tranches après un slice
 
-Gestion de la musique de fond
+### `physics.py` – Physique et mouvement
+- Constante `GRAVITY` pour la chute des objets
+- `apply_gravity_and_move()` : Applique la gravité et déplace les objets
+- `is_off_screen()` : Détecte si un objet est sorti de l'écran
 
-Fonctions play_fruit_sound(), play_bomb_sound(), etc.
+### `spawner.py` – Apparition des objets
+- Classe `BeatSpawner` qui fait apparaître les objets sur le rythme de la musique
+- Gestion des probabilités (bombes, glaces, fruits dorés)
+- Adaptation selon la difficulté
 
-rendering.py – Fonctions de rendu
-draw_text() : Affiche du texte centré
+### `audio_analysis.py` – Analyse du rythme
+- Utilise `librosa` pour détecter le BPM et les beats
+- Cache les résultats dans `beat_cache.json`
+- Fonction `analyze_music()` qui retourne `(tempo, beat_times_ms)`
 
-draw_sword_trail() : Dessine la traînée de souris
+### `game_mouse.py` – Mode souris
+- Boucle de jeu principale pour le mode souris
+- Détection des slices via `segment_intersects_rect()`
+- Gestion du combo, slow-motion, vies
+- Traînée de souris avec effet de fondu
 
-blit_scaled() : Gère le redimensionnement de la fenêtre
+### `game_keyboard.py` – Mode clavier
+- Boucle de jeu principale pour le mode clavier
+- Mapping touches → fruits (`A`=pomme, `B`=banane, etc.)
+- Fonction `find_closest_fruit_by_type()` pour cibler le bon fruit
+- Les bombes explosent automatiquement si non désactivées
 
-logical_mouse_pos() : Convertit les coordonnées souris
+---
 
-screens.py – Menus et écrans
-Écran de splash (logo)
+## ✨ Fonctionnalités
 
-Menu principal (Jouer, Scores, Quitter)
+### Système de jeu
+- ✅ 2 modes de jeu (souris et clavier)
+- ✅ 2 difficultés (Easy et Hard)
+- ✅ Système de combo (×3 après 10 slices)
+- ✅ Slow-motion activé par les glaces
+- ✅ Fruits dorés donnent des vies bonus
+- ✅ Synchronisation avec le rythme de la musique
 
-Choix du mode (Souris/Clavier)
+### Audio
+- ✅ Musique de fond
+- ✅ Effets sonores distincts (fruits, bombe, combo, goldenfruit)
+- ✅ Analyse BPM automatique avec cache
 
-Choix de difficulté (Easy/Hard)
+### Interface
+- ✅ Menu principal avec choix du mode
+- ✅ Tableau des scores (top 10)
+- ✅ Fenêtre redimensionnable
+- ✅ Effets visuels (traînée souris, clignotement bombes)
 
-Tableau des scores
+---
 
-Écran Game Over
+## 🛠️ Technologies utilisées
 
-Gestion du fichier scores.json
+- **Python 3.8+**
+- **Pygame** : Moteur de jeu 2D
+- **Librosa** : Analyse audio et détection de BPM
+- **JSON** : Sauvegarde des scores
 
-entities.py – Objets du jeu
-Définition des types de fruits (FRUIT_TYPES)
+---
 
-Types spéciaux : ICE_TYPE, BOMB_TYPE, GOLDENFRUIT_TYPE
+## 📝 License
 
-Classe FallingObject (position, vitesse, dessin)
-
-Fonctions de spawn : random_fruit(), bomb(), goldenfruit(), etc.
-
-make_slices_from_fruit() : Crée les tranches après un slice
-
-physics.py – Physique et mouvement
-Constante GRAVITY pour la chute des objets
-
-apply_gravity_and_move() : Applique la gravité et déplace les objets
-
-is_off_screen() : Détecte si un objet est sorti de l'écran
-
-spawner.py – Apparition des objets
-Classe BeatSpawner qui fait apparaître les objets sur le rythme de la musique
-
-Gestion des probabilités (bombes, glaces, fruits dorés)
-
-Adaptation selon la difficulté
-
-audio_analysis.py – Analyse du rythme
-Utilise librosa pour détecter le BPM et les beats
-
-Cache les résultats dans beat_cache.json
-
-Fonction analyze_music() qui retourne (tempo, beat_times_ms)
-
-game_mouse.py – Mode souris
-Boucle de jeu principale pour le mode souris
-
-Détection des slices via segment_intersects_rect()
-
-Gestion du combo, slow-motion, vies
-
-Traînée de souris avec effet de fondu
-
-game_keyboard.py – Mode clavier
-Boucle de jeu principale pour le mode clavier
-
-Mapping touches → fruits (A=pomme, B=banane, etc.)
-
-Fonction find_closest_fruit_by_type() pour cibler le bon fruit
-
-Les bombes explosent automatiquement si non désactivées
-
-✨ Fonctionnalités
-Système de jeu
-✅ 2 modes de jeu (souris et clavier)
-
-✅ 2 difficultés (Easy et Hard)
-
-✅ Système de combo (×3 après 10 slices)
-
-✅ Slow-motion activé par les glaces
-
-✅ Fruits dorés donnent des vies bonus
-
-✅ Synchronisation avec le rythme de la musique
-
-Audio
-✅ Musique de fond
-
-✅ Effets sonores distincts (fruits, bombe, combo, goldenfruit)
-
-✅ Analyse BPM automatique avec cache
-
-Interface
-✅ Menu principal avec choix du mode
-
-✅ Tableau des scores (top 10)
-
-✅ Fenêtre redimensionnable
-
-✅ Effets visuels (traînée souris, clignotement bombes)
-
-🛠️ Technologies utilisées
-Python 3.8+
-
-Pygame : Moteur de jeu 2D
-
-Librosa : Analyse audio et détection de BPM
-
-JSON : Sauvegarde des scores
-
-📝 License
 MIT License - Libre d'utilisation et de modification
 
-🐛 Problèmes connus
-Aucun pour le moment
+---
 
-🚀 Améliorations futures
- Ajouter d'autres fruits (pastèque, kiwi, etc.)
+## 👥 Auteurs
 
- Mode multijoueur local
+Développé par **Mayeul** / **Marion** / **Antuat** dans le cadre d'un projet scolaire
 
- Power-ups supplémentaires
+---
 
- Animations de particules
+## 🐛 Problèmes connus
 
- Leaderboard en ligne
+- Aucun pour le moment
 
+---
 
+## 🚀 Améliorations futures
+
+- [ ] Ajouter d'autres fruits (pastèque, kiwi, etc.)
+- [ ] Mode multijoueur local
+- [ ] Power-ups supplémentaires
+- [ ] Animations de particules
+- [ ] Leaderboard en ligne
+
+---
+
+**Bon jeu ! 🍎🍌🍊**
+```
